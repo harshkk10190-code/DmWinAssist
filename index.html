@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Smart Assistant – Server Mode</title>
+<style>
+body{background:#050b1f;color:#e8ecff;font-family:sans-serif}
+.card{background:#0e1a3a;border-radius:14px;padding:14px;margin:12px}
+.green{color:#2ecc71}
+.red{color:#ff4d4d}
+.violet{color:#c77dff}
+.wait{color:#f1c40f}
+button{padding:10px;border-radius:10px}
+</style>
+</head>
+
+<body>
+<h2>🧠 Server Mode Assistant</h2>
+
+<div class="card" id="pred">Loading…</div>
+<div class="card" id="stats"></div>
+
+<button onclick="fetch('/reset/stats')">Reset Stats</button>
+<button onclick="fetch('/reset/hardstop')">Reset Hard Stop</button>
+
+<div class="card">
+<b>Latest Results</b>
+<div id="hist"></div>
+</div>
+
+<script>
+async function load(){
+  const r = await fetch("YOUR_SERVER_URL/state");
+  const s = await r.json();
+
+  pred.innerHTML = s.hardStop
+    ? "🛑 HARD STOP"
+    : s.locked
+      ? `🎯 <b>${s.prediction.toUpperCase()}</b><br>
+         Locked for ${s.currentIssue}`
+      : "⏸ WAIT";
+
+  stats.innerText =
+    `Wins: ${s.wins} | Losses: ${s.losses} | Accuracy: ${s.accuracy}%`;
+
+  hist.innerHTML = s.latestResults.map(r =>
+    `<div>${r.issue} → ${r.colors.join(" + ")}</div>`
+  ).join("");
+}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
