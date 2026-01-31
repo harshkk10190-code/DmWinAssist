@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kira Smart Assistant – Color Only</title>
+
+<style>
+/* ================== GLOBAL ================== */
+body{
+  margin:0;
+  font-family:system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background:linear-gradient(180deg,#050b1f,#0b1535);
+  color:#e8ecff;
+}
+
+.container{
+  max-width:420px;
+  margin:20px auto;
+  padding:16px;
+}
+
+/* ================== CARDS ================== */
+.card{
+  background:#0e1a3a;
+  border:1px solid #1f3b8f;
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+
+h1{
+  margin:0 0 6px;
+  font-size:20px;
+}
+
+.small{
+  opacity:.75;
+  font-size:13px;
+}
+
+.center{
+  text-align:center;
+}
+
+/* ================== COLORS ================== */
+.green{color:#2ecc71}
+.red{color:#ff4d4d}
+.violet{color:#c77dff}
+.wait{color:#f1c40f}
+
+/* ================== BUTTONS ================== */
+button{
+  background:#142b6f;
+  border:1px solid #2f55d4;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+
+button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(47,85,212,.4);
+}
+
+button.danger{
+  background:#5a1a1a;
+  border-color:#ff4d4d;
+}
+
+.flex{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+}
+
+/* ================== SYSTEM FOOTER ================== */
+.system-footer{
+  margin-top:16px;
+  opacity:0.95;
+}
+
+/* STATUS TEXT */
+.footer-status{
+  font-size:13px;
+  font-weight:500;
+  margin-bottom:8px;
+  transition:color .3s ease, text-shadow .3s ease;
+}
+
+/* ================== FOOTER COLOR STATES ================== */
+.footer-green{
+  color:#2ecc71;
+  text-shadow:
+    0 0 6px rgba(46,204,113,.45),
+    0 0 12px rgba(46,204,113,.25);
+}
+
+.footer-red{
+  color:#ff4d4d;
+  text-shadow:
+    0 0 6px rgba(255,77,77,.45),
+    0 0 12px rgba(255,77,77,.25);
+}
+
+.footer-violet{
+  color:#c77dff;
+  text-shadow:
+    0 0 6px rgba(199,125,255,.5),
+    0 0 14px rgba(199,125,255,.35);
+}
+
+.footer-wait{
+  color:#f1c40f;
+  text-shadow:0 0 6px rgba(241,196,15,.35);
+  animation:pulseGlow 2s infinite;
+}
+
+/* ================== CONFIDENCE BAR ================== */
+.confidence-bar{
+  width:100%;
+  height:6px;
+  background:#1a2555;
+  border-radius:6px;
+  overflow:hidden;
+  margin-bottom:6px;
+  position:relative;
+}
+
+#confidenceFill{
+  height:100%;
+  width:0%;
+  background:#2ecc71;
+  transition:width .4s ease, background .4s ease;
+  position:relative;
+}
+
+/* subtle scanner shimmer */
+#confidenceFill::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  opacity:.18;
+  background:linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.45),
+    transparent
+  );
+  animation:scan 2.5s linear infinite;
+}
+
+/* ================== WARNING TEXT ================== */
+.footer-warning{
+  font-size:11px;
+  opacity:.55;
+}
+
+.footer-regard{
+  font-size:11px;
+  opacity:.55;
+}
+
+/* ================== ANIMATIONS ================== */
+@keyframes pulseGlow{
+  0%{text-shadow:0 0 4px transparent}
+  50%{text-shadow:0 0 14px currentColor}
+  100%{text-shadow:0 0 4px transparent}
+}
+
+.footer-pulse{
+  animation:pulseGlow 1.4s infinite;
+}
+
+@keyframes scan{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
+}
+</style>
+</head>
+
+<body>
+
+<audio id="betSound" src="alert.mp3" preload="auto"></audio>
+
+<div class="container">
+
+<h1>🤖 Kira Predictor 3/4 level |</h1>
+<div class="small">🆔 Dm For Access = @wtf.hrs</div>
+
+<div class="card">
+🟢 <b>Status:</b> LIVE<br>
+⏱ <span id="timer">--</span> seconds remaining
+</div>
+
+<div class="card" id="predictionBox">Loading…</div>
+
+<div class="card" id="resultBox">Waiting for result…</div>
+
+<div class="card" id="statsBox">
+📊 Wins: 0 | ❌ Losses: 0 | 🎯 Accuracy: 0%
+</div>
+
+<div class="flex">
+  <button onclick="resetStats()">📊 Reset Stats</button>
+  <button class="danger" onclick="resetHardStop()">🛑 Reset Hard Stop</button>
+</div>
+
+<div class="card">
+📜 <b>Lastest Results</b>
+<div id="history"></div>
+</div>
+
+<div class="small center system-footer">
+  <div id="footerStatus" class="footer-status">
+    🧠 Initializing engine…
+  </div>
+  <div class="footer-warning">
+    ⚠️ No guarantees • Avoid over-betting • Stay disciplined ⚠️
+  </div>
+    <div class="footer-regard">
+   ✊ 2026 • All Right • Reserved 💦
+  </div>
+</div>
+
+
+</div>
+
+<script>
+const API =
+"https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageNo=1&pageSize=10";
+
+const history = document.getElementById("history");
+
+/* ================= STATE ================= */
+let state = JSON.parse(localStorage.getItem("dmwin_color_state")) || {
+  wins:0,
+  losses:0,
+  lossStreak:0,
+  cooldownRounds: 0,
+  hardStop:false,
+  lockedIssue:null,
+  lockedPrediction:null,
+  evaluatedIssue:null,
+  biasGreen: 0,
+  biasRed: 0,
+  lastConfidence:null,
+  lastOutcome:null,
+  lastCheckedIssue: null,
+  confirmingIssue: null,
+  resultConfirmSeen: false,
+  violetRisk:false
+};
+
+function save(){
+  localStorage.setItem("dmwin_color_state",JSON.stringify(state));
+}
+
+/* ================= BET SOUND SYSTEM ================= */
+let lastSoundIssue = null;
+
+function playBetSound(issue){
+  if(lastSoundIssue === issue) return; // prevent duplicate sound
+  lastSoundIssue = issue;
+
+  const sound = document.getElementById("betSound");
+  if(sound){
+    sound.currentTime = 0;
+    sound.play().catch(()=>{});
+  }
+}
+
+/* ================= HELPERS ================= */
+function colorOf(n){
+  n = Number(n);
+  if(n === 0) return "red,violet";
+  if(n === 5) return "green,violet";
+  return n % 2 === 0 ? "red" : "green";
+}
+
+function nextIssue(issue){
+  const base = issue.slice(0,-2);
+  const num  = Number(issue.slice(-2)) + 1;
+  return base + String(num).padStart(2,"0");
+}
+
+/* ================= AI CORE — OPTION A (ULTRA DEFENSIVE) ================= */
+function analyze(list){
+
+  /* SAFETY: data not ready */
+  if(!list || list.length < 6){
+    state.lastWaitReason = "📡 Data syncing";
+    save();
+    return { action:"WAIT", reason:"📡 Data syncing" };
+  }
+
+  /* HARD STOP */
+  if(state.hardStop){
+    state.lastWaitReason = "🛑 Hard stop active";
+    save();
+    return { action:"WAIT", reason:"🛑 Hard stop active" };
+  }
+
+  const last6 = list.slice(0,6);
+  const last3 = list.slice(0,3);
+
+  let green = 0, red = 0, violet = 0;
+
+  last6.forEach(i=>{
+    const c = colorOf(i.number);
+    if(c.includes("green")) green++;
+    if(c.includes("red")) red++;
+    if(c.includes("violet")) violet++;
+  });
+
+  /* ABSOLUTE VIOLET BLOCK */
+  if(violet >= 2){
+    state.violetRisk = true;
+    state.lastWaitReason = "💜 Violet risk";
+    save();
+    return { action:"WAIT", reason:"💜 Violet risk" };
+  }
+  state.violetRisk = false;
+
+  /* TRANSITION FILTER (last 2 must match) */
+  const c1 = colorOf(last3[0].number);
+  const c2 = colorOf(last3[1].number);
+  if(c1 !== c2){
+    state.lastWaitReason = "🔀 Transition zone";
+    save();
+    return { action:"WAIT", reason:"🔀 Transition zone" };
+  }
+
+  /* EXTREME DOMINANCE ONLY */
+  const edge = Math.abs(green - red);
+  if(edge < 4){
+    state.lastWaitReason = "📉 Weak dominance";
+    save();
+    return { action:"WAIT", reason:"📉 Weak dominance" };
+  }
+
+  /* FINAL PICK */
+  const pick = green > red ? "GREEN" : "RED";
+
+  /* FIXED CONFIDENCE (NO HYPE, NO FOMO) */
+  const confidence = 78;
+
+  state.lastWaitReason = null;
+  save();
+
+  return {
+    action: pick,
+    confidence
+  };
+}
+
+/* ================= MAIN LOOP ================= */
+async function tick(){
+
+  // 📡 PRO SYNC micro delay
+  await new Promise(r => setTimeout(r, 500));
+
+  let list;
+  try {
+  const res = await fetch(API);
+  const json = await res.json();
+  list = json.data.list;
+} catch(e){
+  console.log("API error", e);
+  return; // skip this tick safely
+}
+
+await new Promise(r => setTimeout(r, 1200));
+
+  const completedIssue = list[0].issueNumber;
+  const bettingIssue   = nextIssue(completedIssue);
+  const latestColors   = colorOf(list[0].number);
+
+/* === RESULT CHECK (CONTROLLED DEFENSIVE) === */
+if (
+  state.lockedIssue === completedIssue &&
+  state.evaluatedIssue !== completedIssue &&
+  state.lockedPrediction
+) {
+
+  if (latestColors.includes(state.lockedPrediction)) {
+
+    /* ✅ WIN */
+    state.wins++;
+    state.lossStreak = 0;
+    state.lastOutcome = "WIN";
+
+    resultBox.innerHTML =
+      "✅ Last Bet: <span class='green'>WIN</span>";
+
+  } else {
+
+    /* ❌ LOSS */
+    state.losses++;
+    state.lossStreak++;
+    state.lastOutcome = "LOSS";
+
+    resultBox.innerHTML =
+      "❌ Last Bet: <span class='red'>LOSS</span>";
+      
+      /* 🛑 HARD STOP only at extreme */
+    if (state.lossStreak >= 3) {
+      state.hardStop = true;
+    }
+  }
+
+
+  state.evaluatedIssue = completedIssue;
+  save();
+}
+
+  /* === PREDICTION LOCK === */
+  if(state.lockedIssue !== bettingIssue){
+    const d = analyze(list);
+
+    if(d.action === "WAIT"){
+
+  // 🔥 FORCE UNLOCK — IMPORTANT
+  state.lockedIssue = null;
+  state.lockedPrediction = null;
+
+  predictionBox.innerHTML =
+    "⏸ <b>Prediction:</b> <span class='wait'>WAIT</span><br>" +
+    "<span class='small'>" + d.reason + "</span>";
+
+  state.lastWaitReason = d.reason;
+  save();
+}else{
+      state.lockedIssue = bettingIssue;
+state.lockedPrediction = d.action.toLowerCase();
+state.lastWaitReason = null;
+state.lastConfidence = d.confidence;
+save();
+
+playBetSound(bettingIssue);
+
+      predictionBox.innerHTML =
+        "🎯 <b>Prediction:</b> <span class='" + d.action.toLowerCase() + "'>" +
+        d.action + "</span><br>" +
+        "<span class='small'>Locked for period " + bettingIssue +
+        " • Confidence: " + state.lastConfidence + "%</span>";
+    }
+  }else{
+    predictionBox.innerHTML =
+      "🔒 <b>Prediction:</b> <span class='" + state.lockedPrediction + "'>" +
+      state.lockedPrediction.toUpperCase() + "</span><br>" +
+      "<span class='small'>Locked for period " + state.lockedIssue +
+" • Confidence: " + (state.lastConfidence || "--") + "%</span>";
+  }
+
+  /* === STATS === */
+  const total = state.wins + state.losses;
+  const acc   = total ? Math.round((state.wins / total) * 100) : 0;
+  statsBox.innerText =
+    `📊 Wins: ${state.wins} | ❌ Losses: ${state.losses} | 🎯 Accuracy: ${acc}%`;
+
+  /* === LATEST RESULTS (COMPLETED ONLY) === */
+  history.innerHTML = list.slice(0,5).map(i=>{
+    const parts = colorOf(i.number).split(",");
+    const html = parts.map(p=>`<span class="${p}">${p}</span>`).join(" + ");
+    return `<div>${i.issueNumber} → ${html}</div>`;
+  }).join("");
+}
+
+/* ================= TIMER ================= */
+setInterval(()=>{
+  const s = new Date().getSeconds();
+  const remain = s === 0 ? 60 : 60 - s;
+  const el = document.getElementById("timer");
+  if(el) el.innerText = remain;
+},500);
+
+/* ================= CONTROLS ================= */
+function resetStats(){
+  state.wins = 0;
+  state.losses = 0;
+  state.lossStreak = 0;
+  state.lockedIssue = null;
+  state.lockedPrediction = null;
+  state.evaluatedIssue = null;
+  save();
+  location.reload();
+}
+
+function resetHardStop(){
+  state.lossStreak = 0;
+  state.hardStop = false;
+  save();
+  alert("Hard stop reset");
+}
+
+/* ================= START ================= */
+function startSyncedLoop(){
+  tick(); // run immediately once
+
+  const now = new Date();
+  const delay = (60 - now.getSeconds()) * 1000;
+
+  setTimeout(()=>{
+    tick(); // run exactly at next minute boundary
+    setInterval(tick, 3000); // then perfectly aligned
+  }, delay);
+}
+
+startSyncedLoop();
+/* ===== CLEAR RESULT MESSAGE AFTER DISPLAY ===== */
+setInterval(() => {
+  if (!state.lastOutcome && resultBox) {
+    resultBox.innerHTML = "Waiting for result...";
+  }
+}, 6000);
+/* ================= FOOTER v2.2 — EVEN CALMER ================= */
+let footerTick = 0;
+const OWNER_TAG = "🧠 KIRA • Built by HARSH";
+
+/* helper: auto-clear outcome so footer doesn’t get stuck */
+function clearOutcomeSoon(){
+  if(state.lastOutcome){
+    setTimeout(()=>{
+      state.lastOutcome = null;
+      save();
+    }, 6000); // show WIN / LOSS briefly
+  }
+}
+
+function getFooterMessages(){
+
+  /* 1️⃣ HARD STOP */
+  if(state.hardStop){
+    return [
+      "🛑 HARD STOP ACTIVE",
+      "🧊 Trading disabled",
+      "🔄 Manual reset required",
+      OWNER_TAG
+    ];
+  }
+
+  /* 2️⃣ VIOLET ZONE */
+  if(state.violetRisk){
+    return [
+      "🟣 Violet zone detected",
+      "⚠️ Market unstable",
+      "⏸ Trades blocked",
+      OWNER_TAG
+    ];
+  }
+
+  /* 4️⃣ LAST OUTCOME (TEMP) */
+  if(state.lastOutcome === "WIN"){
+    clearOutcomeSoon();
+    return [
+      "✅ WIN confirmed",
+      "📈 Bias reinforced",
+      "🧠 System stabilizing",
+      OWNER_TAG
+    ];
+  }
+
+  if(state.lastOutcome === "LOSS"){
+    clearOutcomeSoon();
+    return [
+      "❌ LOSS confirmed",
+      "🧊 Risk tightened",
+      "🧠 Protection engaged",
+      OWNER_TAG
+    ];
+  }
+
+  /* 5️⃣ WAIT MODE (REASONED) */
+  if(!state.lockedPrediction){
+    return [
+      "⏸ WAIT MODE",
+      state.lastWaitReason || "🧠 Evaluating market",
+      "📊 Waiting for strong edge",
+      OWNER_TAG
+    ];
+  }
+
+  /* 6️⃣ LOCKED TRADE */
+  return [
+    `🔒 Trade locked: ${state.lockedPrediction.toUpperCase()}`,
+    `⏳ Period ${state.lockedIssue}`,
+    "📡 Monitoring round",
+    OWNER_TAG
+  ];
+}
+
+/* ================= FOOTER RENDER LOOP ================= */
+setInterval(()=>{
+  const el = document.getElementById("footerStatus");
+  if(!el) return;
+
+  const msgs = getFooterMessages();
+  const msg  = msgs[footerTick % msgs.length];
+  footerTick++;
+
+  /* reset style */
+  el.className = "footer-status";
+
+  /* calm color logic */
+  if(state.hardStop){
+    el.classList.add("footer-red");
+  }
+  else if(state.violetRisk){
+    el.classList.add("footer-violet");
+  }
+  else if(state.lastOutcome === "WIN"){
+    el.classList.add("footer-green");
+  }
+  else if(state.lastOutcome === "LOSS"){
+    el.classList.add("footer-red");
+  }
+  else if(state.lockedPrediction === "green"){
+    el.classList.add("footer-green");
+  }
+  else if(state.lockedPrediction === "red"){
+    el.classList.add("footer-red");
+  }
+  else{
+    el.classList.add("footer-wait");
+  }
+
+  el.innerText = msg;
+
+}, 2000); // ⏳ slower = calmer
+</script>
+
+</body>
+</html>
