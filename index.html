@@ -336,7 +336,7 @@ function analyze(list){
 
   /* EXTREME DOMINANCE ONLY */
   const edge = Math.abs(green - red);
-  if(edge < 4){
+  if(edge < 3){
     state.lastWaitReason = "📉 Weak dominance";
     save();
     return { action:"WAIT", reason:"📉 Weak dominance" };
